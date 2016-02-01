@@ -17,6 +17,12 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
       'periodOfValidity' => 5,
       'messageSubscribe' => "Hey %name%\n\nPlease click the following link to confirm your subscription: %link%",
       'messageUnsubscribe' => "Hey %name%\n\nPlease click the following link to end your subscription: %link%",
+      'notifyAdmin' => 0,
+      'notifyAdminMailto' => 'mailto@server.com',
+      'notifyAdminSubscribeMailfrom' => 'noreply@server.com',
+      'notifyAdminUnsubscribeMailfrom' => 'noreply@server.com',
+      'notifyAdminMessageSubscribe' => "New newsletter subscription",
+      'notifyAdminMessageUnsubscribe' => "New newsletter unsubscription",
     );
   }
 
@@ -28,6 +34,8 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
    */
   public function getInputfields() {
     $formfields = $this->data['formfields'];
+    $unsubscribe = $this->data['unsubscribe'];
+    $notifyAdmin = $this->data['notifyAdmin'];
     $inputfields = parent::getInputfields();
 
     // select fields
@@ -72,7 +80,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->label = 'Unsubscribe option';
     $field->description = __('Should the form contain an unsubscribe option?');
     $field->value = 1;
-    $field->attr('checked', empty($data['unsubscribe']) ? '' : 'checked');
+    $field->attr('checked', $unsubscribe ? 'checked' : '');
     $field->columnWidth = 33;
     $inputfields->add($field);
 
@@ -102,7 +110,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->name = 'messageSubscribe';
     $field->label = __('Subscribe Email Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
-    $field->rows = 5;
+    $field->rows = 8;
     $field->columnWidth = 50;
     $fieldset->add($field);
 
@@ -110,8 +118,73 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->name = 'messageUnsubscribe';
     $field->label = __('Unsubscribe Email Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
-    $field->rows = 5;
+    $field->rows = 8;
     $field->columnWidth = 50;
+    $fieldset->add($field);
+
+    $inputfields->add($fieldset);
+
+    // new fieldset containing admin notification
+    $fieldset = $this->modules->get('InputfieldFieldset');
+    $fieldset->label = $this->_('Notify Admin');
+    $fieldset->collapsed = Inputfield::collapsedYes;
+    $fieldset->icon = 'comment';
+
+    // notify admin field
+    $field = $this->modules->get('InputfieldCheckbox');
+    $field->name = 'notifyAdmin';
+    $field->label = 'Notify Admin';
+    $field->description = __('Should the admin be notified by email?');
+    $field->value = 1;
+    $field->columnWidth = 50;
+    $field->attr('checked', $notifyAdmin ? 'checked' : '');
+    $fieldset->add($field);
+
+    // notify admin - mailto field
+    $field = $this->modules->get('InputfieldText');
+    $field->name = 'notifyAdminMailto';
+    $field->label = __('Admin Notification Email');
+    $field->description = __('Mailto Address');
+    $field->columnWidth = 50;
+    $field->showIf = "notifyAdmin=1";
+    $fieldset->add($field);
+
+    // notify admin - subscribtion - mailserver field
+    $field = $this->modules->get('InputfieldText');
+    $field->name = 'notifyAdminSubscribeMailfrom';
+    $field->label = __('Subscription - Email From Address');
+    $field->description = __('Sender Address');
+    $field->columnWidth = 50;
+    $field->showIf = "notifyAdmin=1";
+    $fieldset->add($field);
+
+    // notify admin - unsubscribtion - mailserver field
+    $field = $this->modules->get('InputfieldText');
+    $field->name = 'notifyAdminUnsubscribeMailfrom';
+    $field->label = __('Unsubscription - Email From Address');
+    $field->description = __('Sender Address');
+    $field->columnWidth = 50;
+    $field->showIf = "notifyAdmin=1";
+    $fieldset->add($field);
+
+    // notify admin - subscription - message field
+    $field = $this->modules->get('InputfieldTextarea');
+    $field->name = 'notifyAdminMessageSubscribe';
+    $field->label = __('Subscribe Email Message');
+    $field->description = __('Use %fieldName% as placeholder, for example %email%');
+    $field->rows = 8;
+    $field->columnWidth = 50;
+    $field->showIf = "notifyAdmin=1";
+    $fieldset->add($field);
+
+    // notify admin - unsubscription - message field
+    $field = $this->modules->get('InputfieldTextarea');
+    $field->name = 'notifyAdminMessageUnsubscribe';
+    $field->label = __('Unsubscribe Email Message');
+    $field->description = __('Use %fieldName% as placeholder, for example %email%');
+    $field->rows = 8;
+    $field->columnWidth = 50;
+    $field->showIf = "notifyAdmin=1";
     $fieldset->add($field);
 
     $inputfields->add($fieldset);

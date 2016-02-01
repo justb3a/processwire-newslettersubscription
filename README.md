@@ -102,3 +102,13 @@ $defaultClasses = array(
   // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
 );
 ```
+
+## Notify admin via email
+
+* if you want to notify any person via email if a user has subscribed/unsubscribed,
+  check the according checkbox in module settings
+* as soon as you activated this field, some more fields will appear
+* in these fields you can specify further email messages as well as email receiver and sender
+* as you are used to you be able to use placeholders like `%email%`
+  - even for the receiver email addresses
+* after the user has visited the link the admin gets notified
