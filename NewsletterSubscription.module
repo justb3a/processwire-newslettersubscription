@@ -1,0 +1,496 @@
+<?php
+/**
+ * NewsletterSubscription
+ * Handels newsletter subscription and CSV export.
+ * See README.md for usage instructions.
+ *
+ * ProcessWire 2.x
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * @author Tabea David
+ * @version 0.0.1
+ * @copyright Copyright (c) 2016
+ * @see https://github.com/justonestep/processwire-newslettersubscription
+ * @see http://www.processwire.com
+ */
+
+/**
+ * Class NewsletterSubscription
+ */
+class NewsletterSubscription extends WireData implements Module, ConfigurableModule {
+
+  /**
+   * Retrieves module meta data
+   * Implementation of the Module interface
+   *
+   * @return array
+   * @see http://processwire.com/apigen/class-Module.html
+   */
+  public static function getModuleInfo() {
+    return array(
+      'title' => 'NewsletterSubscription',
+      'summary' => 'Handels newsletter subscription and CSV export.',
+      'version' => '0.0.1',
+      'author' => 'Tabea David',
+      'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
+      'autoload' => false,
+      'singular' => false,
+      'icon' => 'newspaper-o',
+    );
+  }
+
+  /**
+   * Markup used during the render() method
+   */
+  static protected $markup = array(
+    'list' => "{out}\n",
+    'item' => "\n\t<div {attrs}>\n{out}\n\t</div>",
+    'item_label' => "\n\t\t<label class='form__item--label' for='{for}'>{out}</label>",
+    'item_label_hidden' => "\n\t\t<label class='field__header field__header--hidden {class}'>{out}</label>",
+    'item_content' => "{out}",
+    'item_error' => "\n<p class='field--error--message'>{out}</p>",
+    'item_description' => "\n<p class='field__description'>{out}</p>",
+    'item_head' => "\n<h2>{out}</h2>",
+    'item_notes' => "\n<p class='field__notes'>{out}</p>",
+    'item_icon' => "",
+    'item_toggle' => "",
+    // ALSO:
+    // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
+  );
+
+  /**
+   * Classes used during the render() method
+   */
+  static protected $classes = array(
+    'form' => 'form', // additional clases for inputfieldform (optional)
+    'list' => 'fields',
+    'list_clearfix' => 'clearfix',
+    'item' => 'form__item form__item--{name}',
+    'item_label' => '', // additional classes for inputfieldheader (optional)
+    'item_content' => '',  // additional classes for inputfieldcontent (optional)
+    'item_required' => 'field--required', // class is for inputfield
+    'item_error' => 'field--error', // note: not the same as markup[item_error], class is for inputfield
+    'item_collapsed' => 'field--collapsed',
+    'item_column_width' => 'field__column',
+    'item_column_width_first' => 'field__column--first',
+    'item_show_if' => 'field--show-if',
+    'item_required_if' => 'field--required-if'
+    // ALSO:
+    // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
+  );
+
+  /**
+   * Render newsletter subscription
+   *
+   * @param array $options
+   * @return string
+   */
+  public function render($options = array()) {
+    $out = '';
+
+    // confirmation link was clicked
+    if ($action = $this->input->get->a) {
+      $out = $action === 'subscribe' ? $this->validateSubscribeToken() : $this->validateUnsubscribeToken();
+    } else {
+      // render basic form (and errors)
+      $out = $this->renderForm($options);
+    }
+
+    return $out;
+  }
+
+  /**
+   * Set markup
+   *
+   * @param Form $form
+   * @param array $options
+   */
+  private function setMarkup(&$form, $options) {
+    $markup = isset($options['markup']) ? array_merge(self::$markup, $options['markup']) : self::$markup;
+    $form->setMarkup($markup);
+  }
+
+  /**
+   * Set classes
+   *
+   * @param Form $form
+   * @param array $options
+   */
+  private function setClasses(&$form, $options) {
+    $classes = isset($options['classes']) ? array_merge(self::$classes, $options['classes']) : self::$classes;
+    $form->setClasses($classes);
+  }
+
+  /**
+   * Get user by token
+   */
+  private function getUserByToken() {
+    $token = $this->input->get->t;
+    $role = $this->roles->get('newsletter');
+
+    $select = 'p.id, e.data AS email, p.created FROM pages AS p';
+    $joinEmail = 'field_email e ON (p.id = e.pages_id)';
+    $joinRole = 'field_roles r ON (p.id = r.pages_id)';
+    $where = "r.data = '{$role->id}' && p.status = 1";
+
+    if ($this->input->get->a === 'subscribe') {
+      $addWhere = "sha1(CONCAT(e.data, p.id, '{$this->config->userAuthSalt}')) = '$token'";
+    } else {
+      $addWhere = "sha1(CONCAT(e.data, '{$this->config->userAuthSalt}')) = '$token'";
+    }
+
+    return $this->db->query("SELECT $select LEFT JOIN $joinEmail LEFT JOIN $joinRole WHERE $where && $addWhere");
+  }
+
+  /**
+   * Get and validate user
+   *
+   * @param string $out
+   * @param integer $status
+   * @return User
+   */
+  private function getAndValidateUser(&$out, $status) {
+    $result = $this->getUserByToken();
+
+    // no user/page was found
+    if (!$result->num_rows) {
+      $out .= $this->_("Unfortunately there's no such user in the database.");
+      return false;
+    }
+
+
+    list ($id, $email, $created) = $result->fetch_row();
+    $user = $this->users->get($id);
+
+    // page is not hidden / user has not role `newsletter`
+    if (!$user || $user->status !== $status || !$user->hasRole('newsletter')) {
+      $out .= $this->_("Unfortunately there's no such user in the database.");
+      return false;
+    }
+
+    // validate created + time x
+    // compare today and created + valid duration time
+    $createdDate = new \DateTime($created);
+    $period = "P{$this->periodOfValidity}D";
+    $createdDate->add(new \DateInterval($period));
+    $today = new \DateTime();
+    if ($today > $createdDate) {
+      $out .= $this->_('Unfortunately this confirmation token has expired.');
+      return false;
+    }
+
+    return $user;
+  }
+
+  /**
+   * validate unsubscribe token
+   *
+   * @return string
+   */
+  private function validateUnsubscribeToken() {
+    $out = '';
+
+    // delete user
+    if ($this->getAndValidateUser($out, Page::statusOn)) {
+      $this->users->delete($user);
+      $this->log->save('messages', "User has been successfully deleted with email `{$user->email}`.");
+      $out .= $this->_('Your account has been successfully deleted.');
+    }
+
+    return $out;
+  }
+
+  /**
+   * validate subscribe token
+   *
+   * @return string
+   */
+  private function validateSubscribeToken() {
+    $out = '';
+
+    // enable user
+    if ($this->getAndValidateUser($out, Page::statusHidden)) {
+      $user->setAndSave('status', Page::statusOn);
+      $this->log->save('messages', "User has been successfully confirmed with email `{$user->email}`.");
+      $out .= $this->_('Thank you for your newsletter subscription.');
+    }
+
+    return $out;
+  }
+
+  /**
+   * Render form
+   *
+   * @param array $options
+   * @return string
+   */
+  private function renderForm($options = array()) {
+    $form = $this->getForm();
+    $this->setMarkup($form, $options);
+    $this->setClasses($form, $options);
+    $out = '';
+
+    // if form was submitted
+    if ($this->input->post->submit) {
+
+      // if unsubscribe=unsubscribe don't process form, only validate email
+      if ($this->input->post->unsubscribe === 'unsubscribe') {
+        $success = $this->doUnsubscribe($form);
+      } else {
+        $success = $this->doSubscribe($form);
+      }
+
+      // the form contains errors
+      if (!$success) {
+        $message = array('error', $this->_('Please verify the data you have entered.'));
+        $out .= $form->render();
+      } else {
+        $message = array('success', $this->_('Congratulations, your newsletter request has been processed successfully! Please check your email for further instructions.'));
+      }
+
+      $this->input->post->success = $success;
+      $out .= "<p class='newsletter--{$message[0]}'>{$message[1]}</p>";
+    } else {
+      $out .= $form->render();
+    }
+
+    return $out;
+  }
+
+  /**
+   * subscribe user
+   *
+   * @param Form $form
+   * @return boolean
+   */
+  private function doSubscribe($form) {
+    $form->processInput($this->input->post);
+
+    // email unique with role newsletter
+    $email = $form->get('email');
+    $unique = $this->users->get("email=$email,roles=newsletter");
+    if ($unique->count() > 0) $email->error(__('This email address is already registered.'));
+
+    if ($form->getErrors()) {
+      // the form contains errors
+      $success = false;
+    } else {
+      $success = true;
+      $this->addUser();
+    }
+
+    return $success;
+  }
+
+  /**
+   * unsubscribe user
+   *
+   * @param Form $form
+   * @return boolean
+   */
+  private function doUnsubscribe($form) {
+    $emailFormItem = $form->get('email');
+    $emailString = $this->sanitizer->email($this->input->post->email);
+
+    if (!$emailString) {
+      $success = false;
+      $emailFormItem->error($this->_('Please enter a valid email address.'));
+    } else {
+      $success = true;
+      $user = $this->users->get("email=$emailString,roles=newsletter");
+
+      // do not show if email could not be found
+      if ($user) {
+        // send unsubscribe mail
+        $token = sha1($emailString . $this->config->userAuthSalt);
+        $this->sendValidationMail($token, $user, 'unsubscribe');
+      }
+    }
+
+    return $success;
+  }
+
+  /**
+   * Add new user
+   */
+  private function addUser() {
+    $u = new User();
+    $u->of(false);
+
+    $u->name = $this->generateUsername();
+    $u->email = $this->sanitizer->email($this->input->post->email);
+    $u->addRole('newsletter');
+    $u->status = Page::statusHidden;
+
+    foreach ($this->formfields as $f) {
+      if ($f === 'email') continue;
+      $u->$f = $this->input->post->$f;
+    }
+
+    $u->save();
+    $u->of(true);
+
+    $this->log->save('messages', "User has been successfully subscribed with email `{$u->email}`.");
+    $token = sha1($u->email . $u->id . $this->config->userAuthSalt);
+    $this->sendValidationMail($token, $u);
+  }
+
+  /**
+   * Send validation mail
+   *
+   * @param string $token
+   * @param User $u
+   * @param string action
+   */
+  private function sendValidationMail($token, $u, $action = 'subscribe') {
+    $names = array();
+    foreach ($this->namefields as $n) $names[] = $u->$n;
+    $name = implode(' ', $names);
+    $link = $this->page->httpUrl . "?a={$action}&t={$token}";
+
+    $wireMail = wireMail();
+    $wireMail->to("$name<$u->email>");
+    $wireMail->from($this->mailfrom);
+
+    if ($action === 'subscribe') {
+      $message = $this->getMessageContent($name, $link, $u, $this->messageSubscribe);
+      $wireMail->subject($this->_('Newsletter Subscription'));
+    } else {
+      $message = $this->getMessageContent($name, $link, $u, $this->messageUnsubscribe);
+      $wireMail->subject($this->_('Newsletter Unsubscription'));
+    }
+
+    $wireMail->body(trim($message));
+    $numSent = $wireMail->send();
+
+    if (!$numSent) {
+      $this->log->save('error', "Email could not been sent to `{$u->email}`.");
+    } else {
+      $this->log->save('messages', "Email has been sent successfully to `{$u->email}`.");
+    }
+  }
+
+  /**
+   * Get message content, substitute variables
+   *
+   * @param string $name
+   * @param string $link
+   * @param User $user
+   * @param string $text
+   * @return string
+   */
+  private function getMessageContent($name, $link, $user, $text) {
+    if (preg_match('/\%name\%/', $text)) $text = str_replace('%name%', $name, $text);
+    if (preg_match('/\%link\%/', $text)) $text = str_replace('%link%', $link, $text);
+    preg_match_all('/\%(.*?)\%/', $text, $matches);
+
+    foreach ($matches[0] as $key => $match) {
+      $text = str_replace($match, $user->{$matches[1][$key]}, $text);
+    }
+
+    return $text;
+  }
+
+  /**
+   * Generate username
+   *
+   * @return string
+   */
+  private function generateUsername() {
+    // set username
+    $name = array();
+    foreach ($this->namefields as $n) {
+      $name[] = $this->input->post->$n;
+    }
+
+    $newName = $this->sanitizer->username(implode('-', $name));
+
+    // check whether username already exist
+    if (!$this->users->get($newName) instanceof \NullPage) {
+      foreach (range(1, 100) as $number) {
+        $n = $newName . $number;
+        if ($this->users->get($n) instanceof \NullPage) {
+          $newName = $n;
+          break;
+        }
+      }
+    }
+
+    return $newName;
+  }
+
+  /**
+   * Get form
+   *
+   * @return Form
+   */
+  private function getForm() {
+    $form = $this->modules->get('InputfieldForm');
+    $form->action = './';
+    $form->method = 'post';
+    $form->attr('id+name','subscribe-form');
+
+    // add unsubscribe button
+    if ($this->unsubscribe) {
+      $val = $this->input->post->unsubscribe ? $this->input->post->unsubscribe : 'subscribe';
+      $field = $this->modules->get('InputfieldRadios');
+      $field->label = __('You want to');
+      $field->addOption('subscribe', __('subscribe'));
+      $field->addOption('unsubscribe', __('unsubscribe'));
+      $field->attr('name+id','unsubscribe');
+      $field->attr('value', $val);
+      $field->required = 1;
+      $form->append($field);
+    }
+
+    // add fields
+    foreach ($this->formfields as $fieldname) {
+      $field = $this->fields->get($fieldname);
+
+      if ($field) {
+        $inputfield = $field->getInputfield($this->page);
+        $form->append($inputfield);
+      }
+    }
+
+    // add a submit button to the form
+    $submit = $this->modules->get('InputfieldSubmit');
+    $submit->name = 'submit';
+    $submit->attr('value', __('Send'));
+    $submit->attr('class', 'button');
+    $form->append($submit);
+
+    return $form;
+  }
+
+  /**
+   * install routine
+   * called only when the module is installed
+   *
+   * @access public
+   */
+  public function ___install() {
+    // add role `newsletter`, only permission page-view
+    $name = 'newsletter';
+    if ($this->roles->get("name={$name}") instanceof \NullPage) {
+      $this->roles->add($name);
+      $this->message("Created new role `{$name}`");
+    }
+  }
+
+  /**
+   * called only when the module is uninstalled
+   * this should return the site to the same state it was in before the module was installed
+   *
+   * @access public
+   */
+  public function ___uninstall() {
+    // remove role `newsletter`
+    $name = 'newsletter';
+    if (!$this->roles->get("name={$name}") instanceof \NullPage) {
+      $this->roles->delete($name);
+      $this->message("Deleted role `{$name}`");
+    }
+  }
+
+}
