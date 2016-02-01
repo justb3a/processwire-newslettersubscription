@@ -105,7 +105,7 @@ $defaultClasses = array(
 
 ## Notify admin via email
 
-* if you want to notify any person via email if a user has subscribed/unsubscribed,
+* if you want to notify any person via email if an user has subscribed/unsubscribed,
   check the according checkbox in module settings
 * as soon as you activated this field, some more fields will appear
 * in these fields you can specify further email messages as well as email receiver and sender
