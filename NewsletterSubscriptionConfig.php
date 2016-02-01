@@ -16,7 +16,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
       'mailfrom' => 'noreply@server.com',
       'periodOfValidity' => 5,
       'messageSubscribe' => "Hey %name%\n\nPlease click the following link to confirm your subscription: %link%",
-      'messageUnsubscribe' => "Hey %name%\n\nPlease click the following link to confirm your unsubscription: %link%",
+      'messageUnsubscribe' => "Hey %name%\n\nPlease click the following link to end your subscription: %link%",
     );
   }
 
@@ -33,7 +33,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // select fields
     $field = $this->modules->get('InputfieldAsmSelect');
     $field->description = __('Add all fields which should be attached to the subscription form.') . PHP_EOL .
-      __('You have to add all needed fields to the user template before*.');
+      __('You have to add all needed fields to the user template first¹.');
     $field->addOption('', '');
     $field->label = __('Select form fields for subscription');
     $field->attr('name', 'formfields');
@@ -62,7 +62,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // help - how to add fields to the user template
     $help = $this->modules->get('InputfieldMarkup');
     $helpLink = 'https://processwire.com/talk/topic/1156-custom-user-fields/?p=10161';
-    $helpContent = '<p><a  target="_blank" href="' . $helpLink . '">* How to add fields to the user template?</a></p>';
+    $helpContent = '<p><a  target="_blank" href="' . $helpLink . '"><sup>1</sup> How to add fields to the user template?</a></p>';
     $help->value = $helpContent;
     $inputfields->add($help);
 
@@ -73,12 +73,15 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->description = __('Should the form contain an unsubscribe option?');
     $field->value = 1;
     $field->attr('checked', empty($data['unsubscribe']) ? '' : 'checked');
+    $field->columnWidth = 33;
     $inputfields->add($field);
 
     // mailserver field
     $field = $this->modules->get('InputfieldText');
     $field->name = 'mailfrom';
-    $field->label = __('Mail From Address');
+    $field->label = __('Email From Address');
+    $field->description = __('Sender Address');
+    $field->columnWidth = 33;
     $inputfields->add($field);
 
     // periodOfValidity field
@@ -86,6 +89,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->name = 'periodOfValidity';
     $field->label = __('Period of Validity');
     $field->description = __('Number of days confirmation links are valid.');
+    $field->columnWidth = 34;
     $inputfields->add($field);
 
     // new fieldset containing messages

@@ -343,9 +343,14 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * @param string action
    */
   private function sendValidationMail($token, $u, $action = 'subscribe') {
-    $names = array();
-    foreach ($this->namefields as $n) $names[] = $u->$n;
-    $name = implode(' ', $names);
+    if ($this->namefields) {
+      $names = array();
+      foreach ($this->namefields as $n) $names[] = $u->$n;
+      $name = implode(' ', $names);
+    } else {
+      $name = $u->name;
+    }
+
     $link = $this->page->httpUrl . "?a={$action}&t={$token}";
 
     $wireMail = wireMail();
@@ -399,11 +404,17 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   private function generateUsername() {
     // set username
     $name = array();
-    foreach ($this->namefields as $n) {
-      $name[] = $this->input->post->$n;
-    }
+    if ($this->namefields) {
+      foreach ($this->namefields as $n) {
+        $name[] = $this->input->post->$n;
+      }
 
-    $newName = $this->sanitizer->username(implode('-', $name));
+      $newName = $this->sanitizer->username(implode('-', $name));
+    } else {
+      // no name fields available, generate name from email address
+      $email = explode('@', $this->sanitizer->email($this->input->email));
+      $newName = $email[0];
+    }
 
     // check whether username already exist
     if (!$this->users->get($newName) instanceof \NullPage) {
@@ -444,12 +455,14 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     }
 
     // add fields
-    foreach ($this->formfields as $fieldname) {
-      $field = $this->fields->get($fieldname);
+    if (is_array($this->formfields)) {
+      foreach ($this->formfields as $fieldname) {
+        $field = $this->fields->get($fieldname);
 
-      if ($field) {
-        $inputfield = $field->getInputfield($this->page);
-        $form->append($inputfield);
+        if ($field) {
+          $inputfield = $field->getInputfield($this->page);
+          $form->append($inputfield);
+        }
       }
     }
 
