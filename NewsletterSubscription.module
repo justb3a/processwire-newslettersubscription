@@ -519,6 +519,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
 
         if ($field) {
           $inputfield = $field->getInputfield($this->page);
+          if ($fieldname === 'email') $inputfield->required = 1;
           $form->append($inputfield);
         }
       }

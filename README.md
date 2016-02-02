@@ -4,24 +4,25 @@ Allow users to subscribe and unsubscribe to a newsletter.
 
 ## Subscription flow
 
-* user enters his/her email and some other information (if you want to)
-* a mail is sent to the given address containing a confirmation link (double opt-in)
-* the user is added with status hidden
-* after visiting the link the user is subscribed (status active)
-* user gets role newsletter
+The user enters their email address and some other information (if you want to).
+As soon as the form is submitted a mail is sent to the given address containing a confirmation link (double opt-in).
+Now the user is added with status hidden and role newsletter.
+After visiting the confirmation link the user is subscribed (changed status to active).
 
 ## Unsubscription flow
 
-### A) using form
+There are two methods to unsubscripe: by using a web form or by providing a link in the newsletter.
 
-* user enters his/her email and selects unsubscribe
-* a mail is sent to the given address (if address exists) containing a confirmation link
-* after visiting the link the user is unsubscribed (the user will be deleted)
+### A) using the form
+
+The user enters only their email address and selects the unsubscribe option (if you provide additional fields hide them via JavaScript).
+If the user submitted a valid and existing email address, a email is sent to this address containing a confirmation link to end subscription.
+After visiting the link the user is unsubscribed (the user will be deleted).
 
 ### B) link inside newsletter
 
-* the user is unsubscribed after visiting the link immediately
-* you have to generate the link depending on email and userAuthSalt
+The user is unsubscribed after visiting the link immediately.
+You have to generate the link parameters depending on email and userAuthSalt.
 
 ## Usage
 
@@ -43,7 +44,8 @@ Allow users to subscribe and unsubscribe to a newsletter.
   ```php
   echo $modules->get('NewsletterSubscription')->render();
   ```
-* if you want to add own classes and/or markup, you can pass an option array as parameter
+* if you want to add own classes and/or markup, you can pass an option array as a parameter
+* to get an overwiev what's possible have a look at [How to overwrite classes and markup](https://github.com/justonestep/processwire-newslettersubscription/tree/develop#how-to-overwrite-classes-and-markup)
 
   ```php
   $options = array (
@@ -62,10 +64,35 @@ Allow users to subscribe and unsubscribe to a newsletter.
 
   echo $modules->get('NewsletterSubscription')->render($options);
   ```
+
+## Notify admin via email
+
+If you want to notify any person e.g. administator via email when an user has subscribed/unsubscribed,
+check the according checkbox in module settings.
+As soon as you activate this field, some more fields will appear.
+In these fields you can specify further email messages as well as email receiver and sender.
+Furthermore you can use placeholders like `%email%` - even for the receiver email addresses.
+After the user has visited the confirmation link the admin gets notified.
+
+## How to translate
+
+All phrases like email subjects are translatable. 
+Add the module file to the language translator and start translating.
+Phrases which don't exist in this file belong to the ProcessWire core.
+For example the messages *Please enter a valid e-mail address* or *Missing required value*.
+
+Relevant Files:
+
+- site/modules/NewsletterSubscription.module
+- wire/modules/Inputfield/InputfieldEmail.module
+- wire/core/InputfieldWrapper.php
+
+Depending on the fields you added to the form there might be some other files.
+
 ## How to overwrite classes and markup
 
-* Below is the list of all available customization options
-  Copied from [ProcessWire master 2.7](https://github.com/ryancramerdesign/ProcessWire/blob/master/wire/core/InputfieldWrapper.php) 
+* below is the list of all available customization options
+  copied from [ProcessWire master 2.7](https://github.com/ryancramerdesign/ProcessWire/blob/master/wire/core/InputfieldWrapper.php) 
 
 ```php
 $defaultMarkup = array(
@@ -102,13 +129,3 @@ $defaultClasses = array(
   // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
 );
 ```
-
-## Notify admin via email
-
-* if you want to notify any person via email if an user has subscribed/unsubscribed,
-  check the according checkbox in module settings
-* as soon as you activated this field, some more fields will appear
-* in these fields you can specify further email messages as well as email receiver and sender
-* as you are used to you be able to use placeholders like `%email%`
-  - even for the receiver email addresses
-* after the user has visited the link the admin gets notified
