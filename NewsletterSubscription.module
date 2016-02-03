@@ -1,7 +1,7 @@
 <?php
 /**
  * NewsletterSubscription
- * Handels newsletter subscription and CSV export.
+ * Allow users to subscribe and unsubscribe to a newsletter
  * See README.md for usage instructions.
  *
  * ProcessWire 2.x
@@ -29,7 +29,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   public static function getModuleInfo() {
     return array(
       'title' => 'NewsletterSubscription',
-      'summary' => 'Handels newsletter subscription and CSV export.',
+      'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
       'version' => '0.0.1',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
