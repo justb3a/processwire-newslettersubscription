@@ -11,7 +11,7 @@ After visiting the confirmation link the user is subscribed (changed status to a
 
 ## Unsubscription flow
 
-There are two methods to unsubscripe: by using a web form or by providing a link in the newsletter.
+There are two methods to unsubscribe: by using a web form or by providing a link in the newsletter.
 
 ### A) using the form
 
