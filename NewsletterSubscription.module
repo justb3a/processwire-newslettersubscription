@@ -8,7 +8,7 @@
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
  * @author Tabea David
- * @version 0.0.1
+ * @version 0.0.2
  * @copyright Copyright (c) 2016
  * @see https://github.com/justonestep/processwire-newslettersubscription
  * @see http://www.processwire.com
@@ -30,7 +30,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     return array(
       'title' => 'NewsletterSubscription',
       'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
-      'version' => '0.0.1',
+      'version' => '0.0.2',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
       'autoload' => false,
@@ -523,6 +523,17 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
           $form->append($inputfield);
         }
       }
+    }
+
+    // add hidden field roles
+    // to enable `requiredIf roles=newsletter` dependencies
+    if ($this->unsubscribe) {
+      $field = $this->modules->get('InputfieldHidden');
+      $field->label = __('Roles');
+      $field->attr('name+id','roles');
+      $field->attr('value', 'newsletter');
+      $field->required = 1;
+      $form->append($field);
     }
 
     // add a submit button to the form
