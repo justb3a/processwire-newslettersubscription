@@ -59,7 +59,9 @@ You have to generate the link parameters depending on email and userAuthSalt.
       'InputfieldRadios' => array(
         'item' => 'form__item--options'
       )
-    )
+    ),
+    'prependMarkup' => "<div>{$page->prepend_markup}</div>,
+    'appendMarkup' => "<p>{$page->append_markup}</p>"
   );
 
   echo $modules->get('NewsletterSubscription')->render($options);

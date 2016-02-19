@@ -8,7 +8,7 @@
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
  * @author Tabea David
- * @version 0.0.2
+ * @version 0.0.3
  * @copyright Copyright (c) 2016
  * @see https://github.com/justonestep/processwire-newslettersubscription
  * @see http://www.processwire.com
@@ -30,7 +30,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     return array(
       'title' => 'NewsletterSubscription',
       'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
-      'version' => '0.0.2',
+      'version' => '0.0.3',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
       'autoload' => false,
@@ -260,7 +260,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * @return string
    */
   private function renderForm($options = array()) {
-    $form = $this->getForm();
+    $form = $this->getForm($options);
     $this->setMarkup($form, $options);
     $this->setClasses($form, $options);
     $out = '';
@@ -491,13 +491,17 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   /**
    * Get form
    *
+   * @param array $options
    * @return Form
    */
-  private function getForm() {
+  private function getForm($options) {
     $form = $this->modules->get('InputfieldForm');
+
     $form->action = './';
     $form->method = 'post';
     $form->attr('id+name','subscribe-form');
+    if (isset($options['prependMarkup'])) $form->prependMarkup = $options['prependMarkup'];
+    if (isset($options['appendMarkup'])) $form->appendMarkup = $options['appendMarkup'];
 
     // add unsubscribe button
     if ($this->unsubscribe) {
