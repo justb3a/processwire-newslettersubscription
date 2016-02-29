@@ -338,7 +338,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       $user = $this->users->get("email=$emailString,roles=newsletter");
 
       // do not show if email could not be found
-      if ($user) {
+      if (count($user) === 1) {
         // send unsubscribe mail
         $token = sha1($emailString . $this->config->userAuthSalt);
         $this->sendValidationMail($token, $user, 'unsubscribe');
