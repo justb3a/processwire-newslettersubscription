@@ -8,7 +8,7 @@
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
  * @author Tabea David
- * @version 0.0.3
+ * @version 0.0.4
  * @copyright Copyright (c) 2016
  * @see https://github.com/justonestep/processwire-newslettersubscription
  * @see http://www.processwire.com
@@ -30,7 +30,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     return array(
       'title' => 'NewsletterSubscription',
       'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
-      'version' => '0.0.3',
+      'version' => '0.0.4',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
       'autoload' => false,
@@ -335,13 +335,13 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       $emailFormItem->error($this->_('Please enter a valid email address.'));
     } else {
       $success = true;
-      $user = $this->users->get("email=$emailString,roles=newsletter");
+      $user = $this->users->find("email=$emailString,roles=newsletter");
 
       // do not show if email could not be found
       if (count($user) === 1) {
         // send unsubscribe mail
         $token = sha1($emailString . $this->config->userAuthSalt);
-        $this->sendValidationMail($token, $user, 'unsubscribe');
+        $this->sendValidationMail($token, $user->first(), 'unsubscribe');
       }
     }
 
@@ -392,7 +392,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $link = $this->page->httpUrl . "?a={$action}&t={$token}";
 
     $wireMail = wireMail();
-    $wireMail->to("$name<$u->email>");
+    $wireMail->to("$name<{$u->email}>");
     $wireMail->from($this->mailfrom);
 
     if ($action === 'subscribe') {
