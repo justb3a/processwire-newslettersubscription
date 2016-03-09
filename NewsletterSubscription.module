@@ -306,8 +306,8 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
 
     // email unique with role newsletter
     $email = $form->get('email');
-    $unique = $this->users->get("email=$email,roles=newsletter");
-    if ($unique->count() > 0) $email->error(__('This email address is already registered.'));
+    $unique = $this->users->find("email=$email->value,roles=newsletter,status=" . Page::statusOn);
+    if (count($unique) > 0) $email->error(__('This email address is already registered.'));
 
     if ($form->getErrors()) {
       // the form contains errors
@@ -335,7 +335,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       $emailFormItem->error($this->_('Please enter a valid email address.'));
     } else {
       $success = true;
-      $user = $this->users->find("email=$emailString,roles=newsletter");
+      $user = $this->users->find("email=$emailString,roles=newsletter,status=" . Page::statusOn);
 
       // do not show if email could not be found
       if (count($user) === 1) {
@@ -352,7 +352,8 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * Add new user
    */
   private function addUser() {
-    $u = new User();
+    $overwrite = $this->users->find("email={$this->input->post->email},roles=newsletter");
+    $u = (count($overwrite) > 0) ? $overwrite->first() : new User();
     $u->of(false);
 
     $u->name = $this->generateUsername();
