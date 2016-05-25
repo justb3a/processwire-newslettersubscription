@@ -89,7 +89,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $out = '';
 
     // confirmation link was clicked
-    if ($action = $this->input->get->a) {
+    if ($action = $this->sanitizer->text($this->input->get->a)) {
       $out = $action === 'subscribe' ? $this->validateSubscribeToken() : $this->validateUnsubscribeToken();
     } else {
       // render basic form (and errors)
@@ -125,7 +125,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * Get user by token
    */
   private function getUserByToken() {
-    $token = $this->input->get->t;
+    $token = $this->sanitizer->text($this->input->get->t);
     $role = $this->roles->get('newsletter');
 
     $select = 'p.id, e.data AS email, p.created FROM pages AS p';
@@ -133,7 +133,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $joinRole = 'field_roles r ON (p.id = r.pages_id)';
     $where = "r.data = '{$role->id}'";
 
-    if ($this->input->get->a === 'subscribe') {
+    if ($this->sanitizer->text($this->input->get->a) === 'subscribe') {
       $addWhere = "sha1(CONCAT(e.data, p.id, '{$this->config->userAuthSalt}')) = '$token'";
       $addWhere .= ' && p.status = ' . Page::statusHidden;
     } else {
@@ -352,18 +352,19 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * Add new user
    */
   private function addUser() {
-    $overwrite = $this->users->find("email={$this->input->post->email},roles=newsletter");
+    $emailString = $this->sanitizer->email($this->input->post->email);
+    $overwrite = $this->users->find("email={$emailString},roles=newsletter");
     $u = (count($overwrite) > 0) ? $overwrite->first() : new User();
     $u->of(false);
 
     $u->name = $this->generateUsername();
-    $u->email = $this->sanitizer->email($this->input->post->email);
+    $u->email = $emailString;
     $u->addRole('newsletter');
     $u->status = Page::statusHidden;
 
     foreach ($this->formfields as $f) {
       if ($f === 'email') continue;
-      $u->$f = $this->input->post->$f;
+      $u->$f = $this->input->text($this->input->post->$f);
     }
 
     $u->save();
@@ -465,7 +466,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $name = array();
     if ($this->namefields) {
       foreach ($this->namefields as $n) {
-        $name[] = $this->input->post->$n;
+        $name[] = $this->sanitizer->text($this->input->post->$n);
       }
 
       $newName = $this->sanitizer->username(implode('-', $name));
