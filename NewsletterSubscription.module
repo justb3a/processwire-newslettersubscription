@@ -364,7 +364,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
 
     foreach ($this->formfields as $f) {
       if ($f === 'email') continue;
-      $u->$f = $this->input->text($this->input->post->$f);
+      $u->$f = $this->sanitizer->text($this->input->post->$f);
     }
 
     $u->save();
