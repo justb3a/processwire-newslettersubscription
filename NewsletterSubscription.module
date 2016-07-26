@@ -125,7 +125,8 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * Get user by token
    */
   private function getUserByToken() {
-    $token = $this->sanitizer->text($this->input->get->t);
+    $token = $this->db->escapeStr($this->input->get->t);
+    $userAuthSalt = $this->db->escapeStr($this->config->userAuthSalt);
     $role = $this->roles->get('newsletter');
 
     $select = 'p.id, e.data AS email, p.created FROM pages AS p';
@@ -134,10 +135,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $where = "r.data = '{$role->id}'";
 
     if ($this->sanitizer->text($this->input->get->a) === 'subscribe') {
-      $addWhere = "sha1(CONCAT(e.data, p.id, '{$this->config->userAuthSalt}')) = '$token'";
+      $addWhere = "sha1(CONCAT(e.data, p.id, '$userAuthSalt')) = '$token'";
       $addWhere .= ' && p.status = ' . Page::statusHidden;
     } else {
-      $addWhere = "sha1(CONCAT(e.data, '{$this->config->userAuthSalt}')) = '$token'";
+      $addWhere = "sha1(CONCAT(e.data, '$userAuthSalt')) = '$token'";
       $addWhere .= ' && p.status = ' . Page::statusOn;
     }
 
