@@ -1,14 +1,14 @@
-<?php
+<?php namespace ProcessWire;
 /**
  * NewsletterSubscription
  * Allow users to subscribe and unsubscribe to a newsletter
  * See README.md for usage instructions.
  *
- * ProcessWire 2.x
+ * ProcessWire 3.x
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
  * @author Tabea David
- * @version 0.0.4
+ * @version 1.0.0
  * @copyright Copyright (c) 2016
  * @see https://github.com/justonestep/processwire-newslettersubscription
  * @see http://www.processwire.com
@@ -30,7 +30,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     return array(
       'title' => 'NewsletterSubscription',
       'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
-      'version' => '0.0.4',
+      'version' => '1.0.0',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
       'autoload' => false,
@@ -126,6 +126,8 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    */
   private function getUserByToken() {
     $token = $this->sanitizer->text($this->input->get->t);
+    $token = $this->db->escapeStr($this->input->get->t);
+    $userAuthSalt = $this->db->escapeStr($this->config->userAuthSalt);
     $role = $this->roles->get('newsletter');
 
     $select = 'p.id, e.data AS email, p.created FROM pages AS p';
@@ -134,10 +136,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $where = "r.data = '{$role->id}'";
 
     if ($this->sanitizer->text($this->input->get->a) === 'subscribe') {
-      $addWhere = "sha1(CONCAT(e.data, p.id, '{$this->config->userAuthSalt}')) = '$token'";
+      $addWhere = "sha1(CONCAT(e.data, p.id, '$userAuthSalt')) = '$token'";
       $addWhere .= ' && p.status = ' . Page::statusHidden;
     } else {
-      $addWhere = "sha1(CONCAT(e.data, '{$this->config->userAuthSalt}')) = '$token'";
+      $addWhere = "sha1(CONCAT(e.data, '$userAuthSalt')) = '$token'";
       $addWhere .= ' && p.status = ' . Page::statusOn;
     }
 
@@ -477,10 +479,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     }
 
     // check whether username already exist
-    if (!$this->users->get($newName) instanceof \NullPage) {
+    if (!$this->users->get($newName) instanceof NullPage) {
       foreach (range(1, 100) as $number) {
         $n = $newName . $number;
-        if ($this->users->get($n) instanceof \NullPage) {
+        if ($this->users->get($n) instanceof NullPage) {
           $newName = $n;
           break;
         }
@@ -561,7 +563,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   public function ___install() {
     // add role `newsletter`, only permission page-view
     $name = 'newsletter';
-    if ($this->roles->get("name={$name}") instanceof \NullPage) {
+    if ($this->roles->get("name={$name}") instanceof NullPage) {
       $this->roles->add($name);
       $this->message("Created new role `{$name}`");
     }
@@ -576,7 +578,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   public function ___uninstall() {
     // remove role `newsletter`
     $name = 'newsletter';
-    if (!$this->roles->get("name={$name}") instanceof \NullPage) {
+    if (!$this->roles->get("name={$name}") instanceof NullPage) {
       $this->roles->delete($name);
       $this->message("Deleted role `{$name}`");
     }
