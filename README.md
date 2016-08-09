@@ -24,6 +24,8 @@ After visiting the link the user is unsubscribed (the user will be deleted).
 The user is unsubscribed after visiting the link immediately.
 You have to generate the link parameters depending on email and userAuthSalt.
 
+**Example:** `https://domain.com/newsletter/?a=unsubscribe&t={sha1($email . $this->config->userAuthSalt)}`
+
 ## Usage
 
 * install the module
