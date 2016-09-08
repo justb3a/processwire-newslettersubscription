@@ -13,6 +13,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
       'formfields' => 'email',
       'namefields' => '',
       'unsubscribe' => false,
+      'noCompare' => false,
       'mailfrom' => 'noreply@server.com',
       'periodOfValidity' => 5,
       'messageSubscribe' => "Hey %name%\n\nPlease click the following link to confirm your subscription: %link%",
@@ -36,6 +37,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $formfields = $this->data['formfields'];
     $unsubscribe = $this->data['unsubscribe'];
     $notifyAdmin = $this->data['notifyAdmin'];
+    $noCompare = $this->data['noCompare'];
     $inputfields = parent::getInputfields();
 
     // select fields
@@ -81,15 +83,25 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->description = __('Should the form contain an unsubscribe option?');
     $field->value = 1;
     $field->attr('checked', $unsubscribe ? 'checked' : '');
-    $field->columnWidth = 33;
+    $field->columnWidth = 25;
+    $inputfields->add($field);
+
+    // noCompare field
+    $field = $this->modules->get('InputfieldCheckbox');
+    $field->name = 'noCompare';
+    $field->label = 'Do not compare E-Mail-Addresses';
+    $field->description = __('Do not check whether an E-Mail-Address already exists.');
+    $field->value = 1;
+    $field->attr('checked', $noCompare ? 'checked' : '');
+    $field->columnWidth = 25;
     $inputfields->add($field);
 
     // mailserver field
     $field = $this->modules->get('InputfieldText');
     $field->name = 'mailfrom';
-    $field->label = __('Email From Address');
+    $field->label = __('E-Mail From Address');
     $field->description = __('Sender Address');
-    $field->columnWidth = 33;
+    $field->columnWidth = 25;
     $inputfields->add($field);
 
     // periodOfValidity field
@@ -97,18 +109,18 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     $field->name = 'periodOfValidity';
     $field->label = __('Period of Validity');
     $field->description = __('Number of days confirmation links are valid.');
-    $field->columnWidth = 34;
+    $field->columnWidth = 25;
     $inputfields->add($field);
 
     // new fieldset containing messages
     $fieldset = $this->modules->get('InputfieldFieldset');
-    $fieldset->label = $this->_('Email Messages');
+    $fieldset->label = $this->_('E-Mail Messages');
     $fieldset->collapsed = Inputfield::collapsedYes;
     $fieldset->icon = 'send';
 
     $field = $this->modules->get('InputfieldTextarea');
     $field->name = 'messageSubscribe';
-    $field->label = __('Subscribe Email Message');
+    $field->label = __('Subscribe E-Mail Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
     $field->rows = 8;
     $field->columnWidth = 50;
@@ -116,7 +128,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
 
     $field = $this->modules->get('InputfieldTextarea');
     $field->name = 'messageUnsubscribe';
-    $field->label = __('Unsubscribe Email Message');
+    $field->label = __('Unsubscribe E-Mail Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
     $field->rows = 8;
     $field->columnWidth = 50;
@@ -143,7 +155,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // notify admin - mailto field
     $field = $this->modules->get('InputfieldText');
     $field->name = 'notifyAdminMailto';
-    $field->label = __('Admin Notification Email');
+    $field->label = __('Admin Notification E-Mail');
     $field->description = __('Mailto Address');
     $field->columnWidth = 50;
     $field->showIf = "notifyAdmin=1";
@@ -152,7 +164,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // notify admin - subscribtion - mailserver field
     $field = $this->modules->get('InputfieldText');
     $field->name = 'notifyAdminSubscribeMailfrom';
-    $field->label = __('Subscription - Email From Address');
+    $field->label = __('Subscription - E-Mail From Address');
     $field->description = __('Sender Address');
     $field->columnWidth = 50;
     $field->showIf = "notifyAdmin=1";
@@ -161,7 +173,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // notify admin - unsubscribtion - mailserver field
     $field = $this->modules->get('InputfieldText');
     $field->name = 'notifyAdminUnsubscribeMailfrom';
-    $field->label = __('Unsubscription - Email From Address');
+    $field->label = __('Unsubscription - E-Mail From Address');
     $field->description = __('Sender Address');
     $field->columnWidth = 50;
     $field->showIf = "notifyAdmin=1";
@@ -170,7 +182,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // notify admin - subscription - message field
     $field = $this->modules->get('InputfieldTextarea');
     $field->name = 'notifyAdminMessageSubscribe';
-    $field->label = __('Subscribe Email Message');
+    $field->label = __('Subscribe E-Mail Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
     $field->rows = 8;
     $field->columnWidth = 50;
@@ -180,7 +192,7 @@ class NewsletterSubscriptionConfig extends ModuleConfig {
     // notify admin - unsubscription - message field
     $field = $this->modules->get('InputfieldTextarea');
     $field->name = 'notifyAdminMessageUnsubscribe';
-    $field->label = __('Unsubscribe Email Message');
+    $field->label = __('Unsubscribe E-Mail Message');
     $field->description = __('Use %fieldName% as placeholder, for example %email%');
     $field->rows = 8;
     $field->columnWidth = 50;

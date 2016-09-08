@@ -1,5 +1,7 @@
 # ProcessWire newsletter subscription
 
+Compatibility: ProcessWire 3.x
+
 Allow users to subscribe and unsubscribe to a newsletter.
 
 ## Subscription flow
