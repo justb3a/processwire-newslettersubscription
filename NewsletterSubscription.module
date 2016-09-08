@@ -1,14 +1,14 @@
-<?php
+<?php namespace ProcessWire;
 /**
  * NewsletterSubscription
  * Allow users to subscribe and unsubscribe to a newsletter
  * See README.md for usage instructions.
  *
- * ProcessWire 2.x
+ * ProcessWire 3.x
  * Licensed under GNU/GPL v2, see LICENSE.TXT
  *
  * @author Tabea David
- * @version 0.0.4
+ * @version 1.0.0
  * @copyright Copyright (c) 2016
  * @see https://github.com/justonestep/processwire-newslettersubscription
  * @see http://www.processwire.com
@@ -30,7 +30,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     return array(
       'title' => 'NewsletterSubscription',
       'summary' => 'Allow users to subscribe and unsubscribe to a newsletter',
-      'version' => '0.0.4',
+      'version' => '1.0.0',
       'author' => 'Tabea David',
       'href' => 'http://github.com/justonestep/processwire-newslettersubscription',
       'autoload' => false,
@@ -85,7 +85,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * @param array $options
    * @return string
    */
-  public function render($options = array()) {
+  public function ___render($options = array()) {
     $out = '';
 
     // confirmation link was clicked
@@ -129,7 +129,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $userAuthSalt = $this->db->escapeStr($this->config->userAuthSalt);
     $role = $this->roles->get('newsletter');
 
-    $select = 'p.id, e.data AS email, p.created FROM pages AS p';
+    $select = 'p.id, e.data AS email, p.modified FROM pages AS p';
     $joinEmail = 'field_email e ON (p.id = e.pages_id)';
     $joinRole = 'field_roles r ON (p.id = r.pages_id)';
     $where = "r.data = '{$role->id}'";
@@ -161,8 +161,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       return false;
     }
 
-
-    list ($id, $email, $created) = $result->fetch_row();
+    list ($id, $email, $modified) = $result->fetch_row();
     $user = $this->users->get($id);
 
     // page is not hidden / user has not role `newsletter`
@@ -171,15 +170,17 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       return false;
     }
 
-    // validate created + time x
+    // only if action equals subscribe: validate created + time x
     // compare today and created + valid duration time
-    $createdDate = new \DateTime($created);
-    $period = "P{$this->periodOfValidity}D";
-    $createdDate->add(new \DateInterval($period));
-    $today = new \DateTime();
-    if ($today > $createdDate) {
-      $out .= $this->_('Unfortunately this confirmation token has expired.');
-      return false;
+    if ($status !== Page::statusOn) {
+      $createdDate = new \DateTime($modified);
+      $period = "P{$this->periodOfValidity}D";
+      $createdDate->add(new \DateInterval($period));
+      $today = new \DateTime();
+      if ($today > $createdDate) {
+        $out .= $this->_('Unfortunately this confirmation token has expired.');
+        return false;
+      }
     }
 
     return $user;
@@ -194,11 +195,12 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $out = '';
 
     // delete user
-    if ($user = $this->getAndValidateUser($out, Page::statusOn)) {
+    $user = $this->getAndValidateUser($out, Page::statusOn);
+    if ($user || $this->noCompare) {
+      if ($this->notifyAdmin) $this->notifyAdmin($user, 'unsubscribe');
       $this->users->delete($user);
       $this->log->save('messages', "User has been successfully deleted with email `{$user->email}`.");
       $out .= html_entity_decode($this->_('Your account has been successfully deleted.'), ENT_QUOTES, 'UTF-8');
-      if ($this->notifyAdmin) $this->notifyAdmin($user, 'unsubscribe');
     }
 
     return $out;
@@ -214,7 +216,9 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
 
     // enable user
     if ($user = $this->getAndValidateUser($out, Page::statusHidden)) {
-      $user->setAndSave('status', Page::statusOn);
+      $user->set('status', Page::statusOn);
+      $user->save();
+
       $this->log->save('messages', "User has been successfully confirmed with email `{$user->email}`.");
       $out .= html_entity_decode($this->_('Thank you for your newsletter subscription.'), ENT_QUOTES, 'UTF-8');
       if ($this->notifyAdmin) $this->notifyAdmin($user, 'subscribe');
@@ -231,19 +235,25 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    */
   public function ___notifyAdmin($user, $action) {
     $wireMail = wireMail();
-    $wireMail->to($this->notifyAdminMailto);
+
+    // $wireMail->to($this->notifyAdminMailto);
+    list($toEmail, $toName) = $this->extractEmailAndName($this->notifyAdminMailto);
+    $wireMail->to = "$toName <$toEmail>";
 
     if ($action === 'subscribe') {
       $mailFrom = $this->adminNotifyGetContent($user, $this->notifyAdminSubscribeMailfrom);
       $message = $this->adminNotifyGetContent($user, $this->notifyAdminMessageSubscribe);
       $wireMail->subject($this->_('Newsletter Subscription Notification'));
     } else {
-      $mailFrom = $this->adminNotifyGetContent($user, $this->notifyAdminSubscribeMailfrom);
+      $mailFrom = $this->adminNotifyGetContent($user, $this->notifyAdminUnsubscribeMailfrom);
       $message = $this->adminNotifyGetContent($user, $this->notifyAdminMessageUnsubscribe);
       $wireMail->subject($this->_('Newsletter Unsubscription Notification'));
     }
 
-    $wireMail->from($mailFrom);
+    // $wireMail->from($mailFrom);
+    list($fromEmail, $fromName) = $this->extractEmailAndName($mailFrom);
+    $wireMail->from = "$fromName <$fromEmail>";
+
     $wireMail->body(trim($message));
     $numSent = $wireMail->send();
 
@@ -283,7 +293,6 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
         $message = array('error', $this->_('Please verify the data you have entered.'));
         $out .= $form->render();
       } else {
-        // @todo: differentiate between un - subsc^
         $message = array('success', $text);
       }
 
@@ -308,7 +317,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     // email unique with role newsletter
     $email = $form->get('email');
     $unique = $this->users->find("email=$email->value,roles=newsletter,status=" . Page::statusOn);
-    if (count($unique) > 0) $email->error(__('This email address is already registered.'));
+    if (!$this->noCompare && count($unique) > 0) $email->error(__('This email address is already registered.'));
 
     if ($form->getErrors()) {
       // the form contains errors
@@ -336,13 +345,25 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       $emailFormItem->error($this->_('Please enter a valid email address.'));
     } else {
       $success = true;
-      $user = $this->users->find("email=$emailString,roles=newsletter,status=" . Page::statusOn);
+      $user = $this->users->get("email=$emailString,roles=newsletter,status=" . Page::statusOn);
+
+      // create user with email address to enable unsubscribtion via token
+      if ($this->noCompare && !$user instanceof User) {
+        $user = new User();
+        $user->of(false);
+        $user->name = "tmp_$emailString";
+        $user->email = $emailString;
+        $user->addRole('newsletter');
+        $user->status = Page::statusOn;
+        $user->save();
+        $user->of(false);
+      }
 
       // do not show if email could not be found
-      if (count($user) === 1) {
+      if ($user instanceof User) {
         // send unsubscribe mail
         $token = sha1($emailString . $this->config->userAuthSalt);
-        $this->sendValidationMail($token, $user->first(), 'unsubscribe');
+        $this->sendValidationMail($token, $user, 'unsubscribe');
       }
     }
 
@@ -355,6 +376,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   private function addUser() {
     $emailString = $this->sanitizer->email($this->input->post->email);
     $overwrite = $this->users->find("email={$emailString},roles=newsletter");
+    $isReload = false;
     $u = (count($overwrite) > 0) ? $overwrite->first() : new User();
     $u->of(false);
 
@@ -365,15 +387,24 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
 
     foreach ($this->formfields as $f) {
       if ($f === 'email') continue;
-      $u->$f = $this->sanitizer->text($this->input->post->$f);
+      $val = $this->input->post->$f;
+
+      $u->$f = is_array($val) ? $this->input->post->$f: $this->sanitizer->text($this->input->post->$f);
     }
 
-    $u->save();
-    $u->of(true);
+    try {
+      $u->save();
+    } catch (WireException $e) {
+      $isReload = true;
+    }
 
-    $this->log->save('messages', "User has been successfully subscribed with email `{$u->email}`.");
-    $token = sha1($u->email . $u->id . $this->config->userAuthSalt);
-    $this->sendValidationMail($token, $u);
+    if (!$isReload) {
+      $u->of(true);
+
+      $this->log->save('messages', "User has been successfully subscribed with email `{$u->email}`.");
+      $token = sha1($u->email . $u->id . $this->config->userAuthSalt);
+      $this->sendValidationMail($token, $u);
+    }
   }
 
   /**
@@ -384,7 +415,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * @param string action
    */
   private function sendValidationMail($token, $u, $action = 'subscribe') {
-    if ($this->namefields) {
+    $link = $this->page->httpUrl . "?a={$action}&t={$token}";
+    $wireMail = wireMail();
+
+    if ($this->namefields && substr($u->name, 0, 4) !== 'tmp_') {
       $names = array();
       foreach ($this->namefields as $n) $names[] = $u->$n;
       $name = implode(' ', $names);
@@ -392,11 +426,13 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
       $name = $u->name;
     }
 
-    $link = $this->page->httpUrl . "?a={$action}&t={$token}";
+    // $wireMail->to("$name<{$u->email}>");
+    list($toEmail, $toName) = $this->extractEmailAndName("$name<{$u->email}>");
+    $wireMail->to = "$toName <$toEmail>";
 
-    $wireMail = wireMail();
-    $wireMail->to("$name<{$u->email}>");
-    $wireMail->from($this->mailfrom);
+    // $wireMail->from($this->mailfrom);
+    list($fromEmail, $fromName) = $this->extractEmailAndName($this->mailfrom);
+    $wireMail->from = "$fromName <$fromEmail>";
 
     if ($action === 'subscribe') {
       $message = $this->getMessageContent($name, $link, $u, $this->messageSubscribe);
@@ -417,6 +453,30 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   }
 
   /**
+   * extract email from name
+   * substitute umlaute
+   *
+   * @param string $email
+   * @return array
+   */
+  public function extractEmailAndName($email) {
+    $name = '';
+    if (strpos($email, '<') !== false && strpos($email, '>') !== false) {
+      // email has separate from name and email
+      if (preg_match('/^(.*?)<([^>]+)>.*$/', $email, $matches)) {
+        $name = preg_replace(
+          array('/ä/', '/ö/', '/ü/', '/Ä/', '/Ö/', '/Ü/','/ß/'),
+          array('ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss'),
+          $matches[1]
+        );
+        $email = $matches[2];
+      }
+    }
+
+    return array($email, $name);
+  }
+
+  /**
    * Get message content, substitute variables
    *
    * @param string $name
@@ -430,8 +490,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     if (preg_match('/\%link\%/', $text)) $text = str_replace('%link%', $link, $text);
     preg_match_all('/\%(.*?)\%/', $text, $matches);
 
-    foreach ($matches[0] as $key => $match) {
-      $text = str_replace($match, $user->{$matches[1][$key]}, $text);
+    if (count($user) === 1) {
+      foreach ($matches[0] as $key => $match) {
+        $text = str_replace($match, $user->{$matches[1][$key]}, $text);
+      }
     }
 
     return $text;
@@ -447,7 +509,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
    * @param string $text
    * @return string
    */
-  private function adminNotifyGetContent($user, $text) {
+  public function adminNotifyGetContent($user, $text) {
     preg_match_all('/\%(.*?)\%/', $text, $matches);
 
     foreach ($matches[0] as $key => $match) {
@@ -478,10 +540,10 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     }
 
     // check whether username already exist
-    if (!$this->users->get($newName) instanceof \NullPage) {
+    if (!$this->users->get($newName) instanceof NullPage) {
       foreach (range(1, 100) as $number) {
         $n = $newName . $number;
-        if ($this->users->get($n) instanceof \NullPage) {
+        if ($this->users->get($n) instanceof NullPage) {
           $newName = $n;
           break;
         }
@@ -562,7 +624,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   public function ___install() {
     // add role `newsletter`, only permission page-view
     $name = 'newsletter';
-    if ($this->roles->get("name={$name}") instanceof \NullPage) {
+    if ($this->roles->get("name={$name}") instanceof NullPage) {
       $this->roles->add($name);
       $this->message("Created new role `{$name}`");
     }
@@ -577,7 +639,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
   public function ___uninstall() {
     // remove role `newsletter`
     $name = 'newsletter';
-    if (!$this->roles->get("name={$name}") instanceof \NullPage) {
+    if (!$this->roles->get("name={$name}") instanceof NullPage) {
       $this->roles->delete($name);
       $this->message("Deleted role `{$name}`");
     }
