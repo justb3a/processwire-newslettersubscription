@@ -71,6 +71,16 @@ You have to generate the link parameters depending on email and userAuthSalt.
   echo $modules->get('NewsletterSubscription')->render($options);
   ```
 
+### Available Keys
+
+| key                | type    | description                                                                                                                            |
+| ---                | ----    | -----------                                                                                                                            |
+| action             | string  | set specific form action, defaults to same page './'                                                                                   |
+| markup             | array   | overwrite markup                                                                                                                       |
+| classes            | array   | overwrite classes                                                                                                                      |
+| prependMarkup      | string  | prepend some markup/content                                                                                                            |
+| appendMarkup       | string  | append some markup/content                                                                                                             |
+
 ## Notify admin via email
 
 If you want to notify any person e.g. administator via email when an user has subscribed/unsubscribed,
