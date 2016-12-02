@@ -152,3 +152,5 @@ static protected $defaultClasses = array(
   // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
 );
 ```
+
+[1]: https://github.com/processwire/ProcessWire/blob/master/wire/core/InputfieldWrapper.php#L44 'ProcessWire master'
