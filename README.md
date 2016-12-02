@@ -107,27 +107,34 @@ Depending on the fields you added to the form there might be some other files.
 
 ## How to overwrite classes and markup
 
-* below is the list of all available customization options
-  copied from [ProcessWire master 2.7](https://github.com/ryancramerdesign/ProcessWire/blob/master/wire/core/InputfieldWrapper.php) 
+Below is the list of all available customization options copied from [ProcessWire master][1].
 
 ```php
-$defaultMarkup = array(
-  'list' => "\n<ul {attrs}>\n{out}\n</ul>\n",
-  'item' => "\n\t<li {attrs}>\n{out}\n\t</li>", 
-  'item_label' => "\n\t\t<label class='InputfieldHeader ui-widget-header{class}' for='{for}'>{out}</label>",
-  'item_label_hidden' => "\n\t\t<label class='InputfieldHeader InputfieldHeaderHidden ui-widget-header{class}'><span>{out}</span></label>",
-  'item_content' => "\n\t\t<div class='InputfieldContent ui-widget-content{class}'>\n{out}\n\t\t</div>", 
-  'item_error' => "\n<p class='InputfieldError ui-state-error'><i class='fa fa-fw fa-flash'></i><span>{out}</span></p>",
-  'item_description' => "\n<p class='description'>{out}</p>", 
-  'item_head' => "\n<h2>{out}</h2>", 
-  'item_notes' => "\n<p class='notes'>{out}</p>",
-  'item_icon' => "<i class='fa fa-{name}'></i> ",
-  'item_toggle' => "<i class='toggle-icon fa fa-angle-down' data-to='fa-angle-down fa-angle-right'></i>", 
+/**
+ * Markup used during the render() method
+ *
+ */
+static protected $defaultMarkup = array(
+  'list' => "<ul {attrs}>{out}</ul>",
+  'item' => "<li {attrs}>{out}</li>", 
+  'item_label' => "<label class='InputfieldHeader ui-widget-header{class}' for='{for}'>{out}</label>",
+  'item_label_hidden' => "<label class='InputfieldHeader InputfieldHeaderHidden ui-widget-header{class}'><span>{out}</span></label>",
+  'item_content' => "<div class='InputfieldContent ui-widget-content{class}'>{out}</div>", 
+  'item_error' => "<p class='InputfieldError ui-state-error'><i class='fa fa-fw fa-flash'></i><span>{out}</span></p>",
+  'item_description' => "<p class='description'>{out}</p>", 
+  'item_head' => "<h2>{out}</h2>", 
+  'item_notes' => "<p class='notes'>{out}</p>",
+  'item_icon' => "<i class='fa fa-fw fa-{name}'></i> ",
+  'item_toggle' => "<i class='toggle-icon fa fa-fw fa-angle-down' data-to='fa-angle-down fa-angle-right'></i>", 
   // ALSO: 
   // InputfieldAnything => array( any of the properties above to override on a per-Inputifeld basis)
 );
 
-$defaultClasses = array(
+/**
+ * Classes used during the render() method
+ *
+ */
+static protected $defaultClasses = array(
   'form' => '', // additional clases for InputfieldForm (optional)
   'list' => 'Inputfields',
   'list_clearfix' => 'ui-helper-clearfix', 
