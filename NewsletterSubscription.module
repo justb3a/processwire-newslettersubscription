@@ -201,8 +201,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $out = '';
 
     // delete user
-    $user = $this->getAndValidateUser($out, Page::statusOn);
-    if ($user || $this->noCompare) {
+    if ($user = $this->getAndValidateUser($out, Page::statusOn)) {
       if ($this->notifyAdmin) $this->notifyAdmin($user, 'unsubscribe');
       $this->users->delete($user);
       $this->log->save('messages', "User has been successfully deleted with email `{$user->email}`.");
