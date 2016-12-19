@@ -263,7 +263,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $numSent = $wireMail->send();
 
     if (!$numSent) {
-      $this->log->save('error', "Email could not been sent to `{$this->notifyAdminMailto}`.");
+      $this->log->save('errors', "Email could not been sent to `{$this->notifyAdminMailto}`.");
     } else {
       $this->log->save('messages', "Email has been sent successfully to `{$this->notifyAdminMailto}`.");
     }
@@ -382,10 +382,12 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $emailString = $this->sanitizer->email($this->input->post->email);
     $overwrite = $this->users->find("email={$emailString},roles=newsletter");
     $isReload = false;
-    $u = (count($overwrite) > 0) ? $overwrite->first() : new User();
-    $u->of(false);
 
-    $u->name = $this->generateUsername();
+    $u = count($overwrite) > 0 ? $overwrite->first() : new User();
+    $name = $this->generateUsername();
+
+    $u->of(false);
+    $u->name = $name;
     $u->email = $emailString;
     $u->addRole('newsletter');
     $u->status = Page::statusHidden;
@@ -393,14 +395,13 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     foreach ($this->formfields as $f) {
       if ($f === 'email') continue;
       $val = $this->input->post->$f;
-
-      $u->$f = is_array($val) ? $this->input->post->$f: $this->sanitizer->text($this->input->post->$f);
+      $u->$f = is_array($val) ? $this->input->post->$f : $this->sanitizer->text($this->input->post->$f);
     }
 
     try {
       $u->save();
     } catch (WireException $e) {
-      $isReload = true;
+      if (!$this->noCompare) $isReload = true;
     }
 
     if (!$isReload) {
@@ -451,7 +452,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     $numSent = $wireMail->send();
 
     if (!$numSent) {
-      $this->log->save('error', "Email could not been sent to `{$u->email}`.");
+      $this->log->save('errors', "Email could not been sent to `{$u->email}`.");
     } else {
       $this->log->save('messages', "Email has been sent successfully to `{$u->email}`.");
     }
