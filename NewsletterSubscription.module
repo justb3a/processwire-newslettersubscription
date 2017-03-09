@@ -496,7 +496,7 @@ class NewsletterSubscription extends WireData implements Module, ConfigurableMod
     if (preg_match('/\%link\%/', $text)) $text = str_replace('%link%', $link, $text);
     preg_match_all('/\%(.*?)\%/', $text, $matches);
 
-    if (count($user) === 1) {
+    if (isset($user)) {
       foreach ($matches[0] as $key => $match) {
         $text = str_replace($match, $user->{$matches[1][$key]}, $text);
       }
